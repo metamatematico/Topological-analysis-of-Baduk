@@ -7,17 +7,110 @@
 
 ## Tabla de contenidos
 
-1. [La idea en términos de Go](#la-idea-en-términos-de-go)
-2. [Cómo funciona el sistema](#cómo-funciona-el-sistema)
-3. [Candela: el extractor de patrones](#candela-el-extractor-de-patrones)
-4. [La capa de análisis topológico](#la-capa-de-análisis-topológico)
-5. [Dos partidas, dos tipos de juego](#dos-partidas-dos-tipos-de-juego)
+1. [Qué analiza y qué ve el sistema](#qué-analiza-y-qué-ve-el-sistema)
+2. [La idea en términos de Go](#la-idea-en-términos-de-go)
+3. [Cómo funciona el sistema](#cómo-funciona-el-sistema)
+4. [Candela: el extractor de patrones](#candela-el-extractor-de-patrones)
+5. [La capa de análisis topológico](#la-capa-de-análisis-topológico)
+6. [Dos partidas, dos tipos de juego](#dos-partidas-dos-tipos-de-juego)
    - [Oguchi vs tiernuki — estilos topológicamente convergentes](#oguchi-vs-tiernuki--estilos-topológicamente-convergentes)
    - [ometitlan vs haya371203 — mayor variedad topológica entre jugadores](#ometitlan-vs-haya371203--mayor-variedad-topológica-entre-jugadores)
    - [Comparación directa](#comparación-directa)
-6. [Cómo correr tu propio análisis](#cómo-correr-tu-propio-análisis)
-7. [Dependencias](#dependencias)
-8. [Créditos](#créditos)
+7. [Cómo correr tu propio análisis](#cómo-correr-tu-propio-análisis)
+8. [Dependencias](#dependencias)
+9. [Créditos](#créditos)
+
+---
+
+## Qué analiza y qué ve el sistema
+
+### El punto de partida: una partida de Go en formato SGF
+
+El sistema recibe un archivo SGF — el registro completo de una partida, jugada por jugada. De ahí extrae dos cosas: quién jugó cada piedra y cómo estaba el tablero en ese momento.
+
+---
+
+### Paso 1 — Candela convierte cada jugada en un patrón
+
+Por cada jugada, Candela toma una foto del tablero completo (19×19) centrada en donde se acaba de jugar. Esa foto se **canonicaliza**: se aplican rotaciones, reflexiones e inversiones de color hasta encontrar la representación mínima. El mismo joseki jugado en cualquier esquina del tablero, con cualquier color, queda representado como el mismo objeto matemático.
+
+Cada jugada se convierte en un **patrón** — una tupla 19×19 de símbolos que describe la posición global del tablero en ese momento.
+
+---
+
+### Paso 2 — El patrón se convierte en geometría
+
+El sistema toma las piedras de **un solo jugador** en un momento dado y las trata como una nube de puntos en el tablero (coordenadas fila-columna de cada piedra). Sobre esa nube construye el **complejo de Vietoris-Rips**:
+
+- ε = 1 → conecta solo piedras adyacentes (grupos con libertades compartidas)
+- ε = 2.5 → conecta piedras a distancia Manhattan ≤ 2 (influencia local)
+- ε = 6 → captura relaciones entre grupos distantes (estrategia global)
+
+Se usa **distancia Manhattan** porque el tablero de Go es una cuadrícula ortogonal.
+
+---
+
+### Paso 3 — Homología persistente: qué "forma" tienen las piedras
+
+En lugar de calcular el complejo a una sola escala, el sistema barre ε de 0 a 12 y registra cuándo aparece y desaparece cada estructura topológica:
+
+**H₀ — grupos de piedras:**
+Cada componente conexa del complejo es un grupo de piedras. Cuando dos grupos se fusionan al aumentar ε, el más joven "muere". El diagrama de persistencia H₀ muestra cuántos grupos hubo y cuánto tiempo sobrevivieron.
+
+**H₁ — lazos / ojos / cercados:**
+Un lazo topológico aparece cuando un conjunto de piedras encierra una región — el análogo matemático de un ojo o territorio cerrado. El diagrama de persistencia H₁ muestra cuántos lazos existieron, a qué escala nacieron y cuándo desaparecieron. Los más persistentes (lejos de la diagonal del diagrama) son los más significativos.
+
+La **entropía persistente** resume esa información en un solo número: qué tan compleja es la configuración topológica del jugador en ese momento.
+
+---
+
+### Paso 4 — Cohomología: quién sostiene cada lazo
+
+La cohomología es la dualización algebraica de la homología. Mientras la homología dice *que existe* un lazo, la cohomología dice *qué pares de piedras específicos lo sostienen*.
+
+El sistema calcula el **cociclo representativo** de cada lazo H₁: un conjunto de aristas (pares de piedras) que forman la columna vertebral de ese territorio.
+
+El **cup product** φ₁∪φ₂ entre dos cociclos detecta si dos lazos interactúan generando una clase H₂. En Go, un cup product no trivial es la firma algebraica de un **grupo con dos ojos** — vivo incondicionalmente.
+
+---
+
+### Paso 5 — El espacio topológico del jugador
+
+Cada jugada queda representada como un vector de 361 dimensiones. El sistema calcula las distancias entre todos los vectores y los proyecta en 2D con MDS. El resultado es el **espacio topológico del jugador**: un mapa donde cada punto es una jugada y los puntos cercanos son jugadas con posiciones similares. La trayectoria muestra cómo evoluciona el estilo del jugador a lo largo de la partida.
+
+---
+
+### Paso 6 — Estadística: ¿las diferencias son reales?
+
+- **Test de permutación (999 iteraciones):** ¿la diferencia topológica entre dos grupos es mayor de la esperada por azar?
+- **Bootstrap de Betti (400 remuestras):** bandas de confianza al 95% sobre las curvas de Betti — qué tan consistente es el estilo del jugador
+- **SVM:** clasifica jugadas (apertura vs final, negro vs blanco) usando imágenes de persistencia H₁ — la accuracy mide qué tan distinguibles son topológicamente esos grupos
+
+---
+
+### Lo que el sistema ve en cada partida
+
+| Lo que se observa | Lo que significa en Go |
+|-------------------|------------------------|
+| H₀ entropía alta | Muchos grupos variados — juego disperso, influencia global |
+| H₀ entropía baja | Pocos grupos bien definidos — juego local, territorial |
+| H₁ entropía alta | Muchos ojos/cercados de distintos tamaños — posición compleja |
+| H₁ entropía baja | Pocos lazos o ninguno — posición abierta, sin territorios cerrados |
+| Lazo H₁ muy persistente | Territorio que se mantiene estable en un rango amplio de escala |
+| Cup product ≠ 0 | Dos lazos que interactúan — grupo con dos ojos |
+| p-valor alto (N vs B) | Ambos jugadores construyen el tablero con la misma lógica topológica |
+| SVM ~97% (apertura vs final) | La topología de apertura y final son tan distintas que se separan casi sin error |
+| Trayectoria MDS compacta | Jugador consistente — siempre juega posiciones topológicamente similares |
+| Trayectoria MDS dispersa | Alta variedad táctica — el jugador cambia de tipo de posición frecuentemente |
+
+### Lo que el sistema NO ve
+
+- El resultado de capturas individuales
+- El orden local de las jugadas (táctica inmediata)
+- Quién va ganando en puntos
+- La calidad de cada jugada individual
+
+El sistema ve la **forma global** de cómo cada jugador ocupa el tablero — la arquitectura topológica de su juego — y cómo esa arquitectura evoluciona y se compara entre jugadores.
 
 ---
 
