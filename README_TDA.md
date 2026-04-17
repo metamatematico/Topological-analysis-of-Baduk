@@ -140,8 +140,8 @@ Produce **13 figuras** y un **reporte Markdown** completo en ~40-60 segundos.
 |---|--------|-------------|
 | 01 | Entropía por jugador | H₀ y H₁ a lo largo de los movimientos de cada jugador |
 | 02 | Curvas de Betti con bootstrap | Variabilidad del estilo topológico de cada jugador |
-| 03 | Complejo VR — Negro en 5 momentos | Cómo construye su red de piedras ometitlan |
-| 04 | Complejo VR — Blanco en 5 momentos | Idem para haya371203 |
+| 03 | Complejo VR — Negro en 5 momentos | Cómo construye su red de piedras Oguchi |
+| 04 | Complejo VR — Blanco en 5 momentos | Idem para tiernuki |
 | 05 | Filtración VR — Negro | La misma posición a ε=1.5, 2.5, 4.0, 6.0 |
 | 06 | Filtración VR — Blanco | Idem |
 | 07 | Espacio topológico MDS | Trayectoria estilística de cada jugador en 2D |
@@ -166,15 +166,15 @@ Dependencias principales: `gudhi`, `persim`, `ripser`, `POT`, `scikit-learn`, `s
 
 ## Ejemplo de resultados
 
-Partida **ometitlan vs haya371203** (OGS, 2021-03-27, 198 movimientos):
+Partida **Oguchi vs tiernuki** (OGS, 2026-02-20, 283 movimientos, B+4.5):
 
 | Pregunta | p-valor | Resultado |
 |----------|---------|-----------|
-| ¿Son topológicamente distintos los dos jugadores? | 0.541 | No — estilos indistinguibles |
-| ¿Cambia el estilo de ometitlan entre apertura y final? | 0.001 | Sí — diferencia muy significativa |
-| ¿Cambia el estilo de haya371203 entre apertura y final? | 0.001 | Sí — diferencia muy significativa |
+| ¿Son topológicamente distintos los dos jugadores? | 0.908 | No — estilos indistinguibles |
+| ¿Cambia el estilo de Oguchi entre apertura y final? | 0.001 | Sí — diferencia muy significativa |
+| ¿Cambia el estilo de tiernuki entre apertura y final? | 0.001 | Sí — diferencia muy significativa |
 
-SVM apertura vs final (H₁): **94.9% accuracy** — la topología captura con precisión el cambio de fase.
+SVM apertura vs final (H₁): **97.2% accuracy** (Oguchi) y **96.5%** (tiernuki) — la topología captura con precisión el cambio de fase.
 
 Ver el análisis completo: [github.com/metamatematico/an-lisis-topol-gico-del-Go](https://github.com/metamatematico/an-lisis-topol-gico-del-Go)
 

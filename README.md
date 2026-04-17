@@ -136,19 +136,19 @@ Dibuja el complejo simplicial **sobre el tablero de Go real**, mostrando:
 
 ---
 
-## Ejemplo completo: ometitlan vs haya371203
+## Ejemplo completo: Oguchi vs tiernuki
 
-Partida de OGS, 2021-03-27. **198 movimientos. Victoria de Blanco por tiempo (B+T).**
+Partida de OGS, 2026-02-20. **283 movimientos. Victoria de Blanco por 4.5 puntos (B+4.5).**
 
-Los resultados completos están en [`ejemplo_ometitlan/`](ejemplo_ometitlan/).
+Los resultados completos están en [`ejemplo_oguchi_vs_tiernuki/`](ejemplo_oguchi_vs_tiernuki/).
 
 ### Complejo simplicial de cada jugador a lo largo del partido
 
 Las figuras muestran el complejo VR (ε=2.5, distancia Manhattan) de las piedras acumuladas en cinco momentos (20%, 40%, 60%, 80%, 100% de sus jugadas):
 
-| Negro (ometitlan) | Blanco (haya371203) |
-|:-----------------:|:-------------------:|
-| ![complejo negro](ejemplo_ometitlan/figuras/fig03_complex_negro_moments.png) | ![complejo blanco](ejemplo_ometitlan/figuras/fig04_complex_blanco_moments.png) |
+| Negro (Oguchi) | Blanco (tiernuki) |
+|:--------------:|:-----------------:|
+| ![complejo negro](ejemplo_oguchi_vs_tiernuki/figuras/fig03_complex_negro_moments.png) | ![complejo blanco](ejemplo_oguchi_vs_tiernuki/figuras/fig04_complex_blanco_moments.png) |
 
 Los triángulos (zonas rellenas) son tríos de piedras mutuamente cercanas — indicador de densidad territorial. Su crecimiento hacia el final refleja la consolidación de grupos.
 
@@ -158,39 +158,39 @@ La misma posición a cuatro valores de ε — esto es literalmente lo que la hom
 
 | Negro | Blanco |
 |:-----:|:------:|
-| ![epsilon negro](ejemplo_ometitlan/figuras/fig05_complex_negro_epsilons.png) | ![epsilon blanco](ejemplo_ometitlan/figuras/fig06_complex_blanco_epsilons.png) |
+| ![epsilon negro](ejemplo_oguchi_vs_tiernuki/figuras/fig05_complex_negro_epsilons.png) | ![epsilon blanco](ejemplo_oguchi_vs_tiernuki/figuras/fig06_complex_blanco_epsilons.png) |
 
 ### Espacio topológico de cada jugador
 
 Cada punto es una jugada del jugador, proyectada en 2D con MDS. El color va de oscuro (inicio) a claro (final). La trayectoria muestra cómo evoluciona el estilo topológico del jugador:
 
-![espacio topológico](ejemplo_ometitlan/figuras/fig07_topo_space_negro.png)
+![espacio topológico](ejemplo_oguchi_vs_tiernuki/figuras/fig07_topo_space_negro.png)
 
 El complejo VR construido sobre ese espacio MDS revela clusters de jugadas similares:
 
-![complejo sobre MDS](ejemplo_ometitlan/figuras/fig08_topo_space_complex.png)
+![complejo sobre MDS](ejemplo_oguchi_vs_tiernuki/figuras/fig08_topo_space_complex.png)
 
 ### Evolución de la entropía topológica
 
 H₀ = grupos de piedras. H₁ = lazos / ojos. La línea roja marca la mitad de la partida:
 
-![entropía](ejemplo_ometitlan/figuras/fig01_entropy_per_player.png)
+![entropía](ejemplo_oguchi_vs_tiernuki/figuras/fig01_entropy_per_player.png)
 
 ### Comparación de curvas de Betti (con bandas de confianza al 95%)
 
-![comparación betti](ejemplo_ometitlan/figuras/fig09_comparison_betti.png)
+![comparación betti](ejemplo_oguchi_vs_tiernuki/figuras/fig09_comparison_betti.png)
 
 ### Resultados estadísticos principales
 
 | Pregunta | p-valor | Conclusión |
 |----------|---------|------------|
-| ¿Son distintos los estilos de ometitlan y haya371203? | 0.541 | No — topológicamente indistinguibles |
-| ¿Cambia el estilo de ometitlan entre apertura y final? | 0.001 | Sí — diferencia muy significativa |
-| ¿Cambia el estilo de haya371203 entre apertura y final? | 0.001 | Sí — diferencia muy significativa |
+| ¿Son distintos los estilos de Oguchi y tiernuki? | 0.908 | No — topológicamente indistinguibles |
+| ¿Cambia el estilo de Oguchi entre apertura y final? | 0.001 | Sí — diferencia muy significativa |
+| ¿Cambia el estilo de tiernuki entre apertura y final? | 0.001 | Sí — diferencia muy significativa |
 
-El SVM sobre imágenes de persistencia H1 para clasificar apertura vs final alcanza **94.9% de accuracy** — la topología captura con precisión el cambio de fase de la partida.
+El SVM sobre imágenes de persistencia H₁ para clasificar apertura vs final alcanza **97.2% de accuracy** (Oguchi) y **96.5%** (tiernuki) — la topología captura con precisión el cambio de fase de la partida.
 
-Ver el [reporte completo con interpretación](ejemplo_ometitlan/reporte_ometitlan.md).
+Ver el [reporte completo con interpretación](ejemplo_oguchi_vs_tiernuki/reporte_oguchi_vs_tiernuki.md).
 
 ---
 
