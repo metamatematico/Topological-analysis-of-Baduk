@@ -241,7 +241,7 @@ Ver el [reporte completo](ejemplo_ometitlan/reporte_ometitlan.md).
 
 **Lectura de la entropía H₁:** los valores más altos en Oguchi vs tiernuki reflejan mayor complejidad topológica media en ambos jugadores — más lazos, ojos y cercados por patrón — consistente con una partida de mayor densidad (283 movimientos vs 198).
 
-**Lectura del SVM:** la caída de accuracy en haya371203 (90.9% vs 96.5% de tiernuki) sugiere que la transición apertura-final es más gradual o menos nítida en ese jugador — hay mayor continuidad estilística entre sus fases de juego.
+**Lectura del SVM apertura vs final:** en la partida Oguchi vs tiernuki ambos jugadores alcanzan accuracy ~97%, lo que indica que la topología de sus patrones cambia de forma abrupta y clara entre la apertura y el final. En la partida ometitlan vs haya, las accuracies bajan a 94.9% y 90.9% respectivamente — la transición entre fases es más gradual y el clasificador tiene más dificultad para separar los dos momentos del juego.
 
 ---
 
