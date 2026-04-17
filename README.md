@@ -241,6 +241,8 @@ Ver el [reporte completo](ejemplo_ometitlan/reporte_ometitlan.md).
 
 **Lectura de la entropía H₁:** los valores más altos en Oguchi vs tiernuki reflejan mayor complejidad topológica media en ambos jugadores — más lazos, ojos y cercados por patrón — consistente con una partida de mayor densidad (283 movimientos vs 198).
 
+**¿Qué es el SVM?** Es un clasificador matemático (*Support Vector Machine*) que recibe las imágenes de persistencia H₁ de cada jugada y aprende a separar dos grupos — en este caso, jugadas de apertura vs jugadas de final. La *accuracy* mide qué tan bien logra esa separación con datos que no vio durante el entrenamiento. Una accuracy alta (≥95%) significa que los patrones topológicos de apertura y final son tan distintos que el clasificador los separa casi sin error. Una accuracy más baja indica que los dos momentos del juego se parecen más y la frontera entre ellos es difusa.
+
 **Lectura del SVM apertura vs final:** en la partida Oguchi vs tiernuki ambos jugadores alcanzan accuracy ~97%, lo que indica que la topología de sus patrones cambia de forma abrupta y clara entre la apertura y el final. En la partida ometitlan vs haya, las accuracies bajan a 94.9% y 90.9% respectivamente — la transición entre fases es más gradual y el clasificador tiene más dificultad para separar los dos momentos del juego.
 
 ---
