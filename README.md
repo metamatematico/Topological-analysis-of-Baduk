@@ -72,7 +72,18 @@ Archivo SGF (partida de Go)
 
 **[Candela](https://github.com/angelsesma/candela)** es el proyecto base de este sistema. Fue desarrollado originalmente para construir una base de datos de patrones de Go a partir de archivos SGF.
 
-### Qué hace Candela
+### Qué tipo de patrones produce Candela
+
+La referencia clásica en análisis de patrones de Go (Liu y Dou, 2007) extraía ventanas de **5×5** centradas en cada jugada — suficiente para capturar contactos locales como atari, hane o tsuke, lo que el paper llama "átomos" del juego.
+
+Candela amplía eso a **19×19**: el tablero completo centrado en la jugada. Esto cambia cualitativamente lo que se captura:
+
+- Una ventana 5×5 ve el contacto inmediato: si hay una piedra adyacente, si hay capturas posibles
+- Una ventana 19×19 ve la **posición global**: cuántos grupos tiene el jugador, qué tan separados están, qué territorios están delimitados, qué influencia tiene en el centro
+
+En términos del paper, se pasa de "átomos" (táctica local) a "moléculas" (estructura estratégica global). Es esta visión completa del tablero la que hace posible medir topología significativa: no tiene sentido hablar de grupos conectados o cercados si solo se mira un cuadrado de 5 intersecciones.
+
+### Qué hace Candela con cada jugada
 
 Por cada jugada de la partida, Candela:
 
@@ -80,7 +91,7 @@ Por cada jugada de la partida, Candela:
 2. **Extrae una ventana 19×19** centrada en la última jugada
 3. **Canonicaliza el patrón**: aplica las 16 transformaciones posibles del tablero (4 rotaciones × 2 reflejos × 2 inversiones de color negro↔blanco) y se queda con el **mínimo lexicográfico**
 
-La canonicalización es clave: hace que el mismo patrón jugado con negro o blanco, girado o espejado, sea **el mismo objeto matemático**. Esto permite comparar patrones entre jugadores de forma justa.
+La canonicalización hace que el mismo joseki jugado en cualquier esquina del tablero, con cualquier color, sea **el mismo objeto matemático**. Esto permite comparar patrones entre jugadores de forma justa.
 
 Sin Candela, no tendríamos una representación estructurada y comparable de las posiciones del tablero. La canonicalización garantiza que la topología que detectamos refleja la **geometría real del juego**, no artefactos de orientación o color.
 

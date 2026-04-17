@@ -33,7 +33,13 @@ candela.py  ←─── extrae patrones canónicos 19×19 por jugada
 candela/tda/  ←─── análisis topológico sobre esos patrones
 ```
 
-Candela hace lo que ninguna librería de topología puede hacer: **entender el tablero de Go**. Su función `canonical_form()` garantiza que el mismo patrón jugado con negro o blanco, en cualquier esquina del tablero, sea el mismo objeto matemático. Sin esa garantía, comparar jugadores topológicamente carecería de sentido.
+### Por qué 19×19 y no 5×5
+
+La referencia clásica (Liu y Dou, 2007) usaba ventanas de **5×5** centradas en cada jugada — suficiente para capturar táctica local (atari, hane, tsuke). El paper de Candela amplía eso al tablero completo **19×19**, pasando de "átomos" tácticos a "moléculas" estratégicas.
+
+Esa diferencia es decisiva para el análisis topológico: con 5×5 apenas hay piedras suficientes para formar un grupo, y no existe estructura de lazos o cercados medible. Con 19×19 se captura la posición global — cuántos grupos tiene el jugador, qué tan separados están, qué territorios están delimitados — que es exactamente lo que H₀ y H₁ miden.
+
+Candela hace lo que ninguna librería de topología puede hacer: **entender el tablero de Go**. Su función `canonical_form()` garantiza que el mismo joseki jugado en cualquier esquina del tablero, con cualquier color, sea el mismo objeto matemático. Sin esa garantía, comparar jugadores topológicamente carecería de sentido.
 
 ---
 
