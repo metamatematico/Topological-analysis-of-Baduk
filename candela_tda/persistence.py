@@ -482,6 +482,96 @@ def cup_product_h1(
     return nonzero
 
 
+# ---------------------------------------------------------------------------
+# Euler characteristic curve
+# ---------------------------------------------------------------------------
+
+def euler_characteristic_curve(
+    diagrams: dict,
+    scales: np.ndarray,
+) -> np.ndarray:
+    """ECC(ε) = Σ_k (-1)^k β_k(ε).
+
+    Collapses the full Betti vector into a single signed integer function of
+    filtration scale. Fast descriptor useful for comparing topological shape.
+
+    Parameters
+    ----------
+    diagrams : dict[int, np.ndarray]
+        Output of compute_persistence.
+    scales : np.ndarray
+        Filtration values at which to evaluate.
+
+    Returns
+    -------
+    ecc : np.ndarray, shape (len(scales),), dtype int64
+    """
+    ecc = np.zeros(len(scales), dtype=np.int64)
+    for k, dgm in diagrams.items():
+        if dgm.size == 0:
+            continue
+        ecc += ((-1) ** k) * betti_curve(dgm, scales)
+    return ecc
+
+
+# ---------------------------------------------------------------------------
+# Persistence silhouette (Chazal et al., 2014)
+# ---------------------------------------------------------------------------
+
+def persistence_silhouette(
+    diagram: Diagram,
+    p: float = 1.0,
+    resolution: int = 100,
+    filtration_range: Optional[tuple] = None,
+) -> tuple:
+    """Weighted average of tent functions (Chazal et al., 2014).
+
+        sil(t) = Σ_i w_i · tent_i(t) / Σ_i w_i,  w_i = |d_i - b_i|^p
+
+    More robust to noise than persistence landscapes because it averages all
+    bars simultaneously instead of tracking per-rank maxima.
+
+    Parameters
+    ----------
+    diagram : np.ndarray, shape (n, 2)
+    p : float
+        Weight exponent (p=1: weight by persistence; p=2: squared).
+    resolution : int
+        Discretisation points.
+    filtration_range : (t_min, t_max) or None
+        Inferred from the diagram if not given.
+
+    Returns
+    -------
+    scales : np.ndarray, shape (resolution,)
+    silhouette : np.ndarray, shape (resolution,)
+    """
+    dgm = filter_infinite(diagram)
+    if dgm.size == 0:
+        t_min, t_max = (0.0, 1.0) if filtration_range is None else filtration_range
+        return np.linspace(t_min, t_max, resolution), np.zeros(resolution)
+
+    weights = np.abs(dgm[:, 1] - dgm[:, 0]) ** p
+    total_weight = weights.sum()
+
+    if filtration_range is None:
+        t_min, t_max = float(dgm[:, 0].min()), float(dgm[:, 1].max())
+    else:
+        t_min, t_max = filtration_range
+    if t_min >= t_max:
+        t_max = t_min + 1.0
+
+    scales = np.linspace(t_min, t_max, resolution)
+    if total_weight == 0:
+        return scales, np.zeros(resolution)
+
+    sil = np.zeros(resolution)
+    for i, (b, d) in enumerate(dgm):
+        sil += weights[i] * np.maximum(0.0, np.minimum(scales - b, d - scales))
+    sil /= total_weight
+    return scales, sil
+
+
 def persistence_images_cohort(
     diagrams: list[Diagram],
     sigma: float = 1.0,

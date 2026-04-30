@@ -374,6 +374,185 @@ def classify_persistence_images(
 # Multiple-comparison correction (Bonferroni / Holm)
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# Topological transition detection
+# ---------------------------------------------------------------------------
+
+def topological_transitions(
+    diagrams: Sequence[Diagram],
+    order: float = 1.0,
+    threshold: Optional[float] = None,
+) -> dict:
+    """Detect sharp topological transitions between consecutive diagrams.
+
+    Computes the Wasserstein distance between each consecutive pair and flags
+    positions where the distance exceeds a threshold. Useful for locating
+    phase changes (opening → middle game → endgame) in a Go game.
+
+    Parameters
+    ----------
+    diagrams : ordered sequence of persistence diagrams (one per move).
+    order : Wasserstein order.
+    threshold : If None, uses mean + 1.5 * std of the distance sequence.
+
+    Returns
+    -------
+    result : dict with keys:
+        'distances'   – np.ndarray, shape (N-1,)
+        'transitions' – list of move indices where distance > threshold
+        'threshold'   – threshold used
+    """
+    from candela.tda.distances import wasserstein_distance
+    n = len(diagrams)
+    if n < 2:
+        return {"distances": np.array([]), "transitions": [], "threshold": 0.0}
+
+    distances = np.array([
+        wasserstein_distance(diagrams[i], diagrams[i + 1], order=order)
+        for i in range(n - 1)
+    ])
+
+    if threshold is None:
+        threshold = float(distances.mean() + 1.5 * distances.std())
+
+    transitions = [i + 1 for i, d in enumerate(distances) if d > threshold]
+    return {"distances": distances, "transitions": transitions, "threshold": threshold}
+
+
+# ---------------------------------------------------------------------------
+# Time-stratified test (simplified multiparameter persistence, Section 8.1)
+# ---------------------------------------------------------------------------
+
+def time_stratified_test(
+    diagrams: Sequence[Diagram],
+    n_strata: int = 4,
+    n_permutations: int = 999,
+    seed: int = 0,
+) -> list:
+    """Test for topological differences between consecutive temporal strata.
+
+    Divides the move sequence into n_strata equal segments and runs pairwise
+    permutation tests between all adjacent strata. Practical approximation
+    to multiparameter persistence (Lesnick, 2015): discrete slices along t
+    instead of a full 2-parameter module over (ε, t).
+
+    Parameters
+    ----------
+    diagrams : ordered sequence of persistence diagrams (one per move).
+    n_strata : number of temporal strata.
+    n_permutations : permutations per test.
+    seed : RNG seed.
+
+    Returns
+    -------
+    results : list of dicts per adjacent pair:
+        'stratum_a' – (start, end) move indices
+        'stratum_b' – (start, end) move indices
+        'p_value'   – permutation test p-value
+        'statistic' – test statistic
+    """
+    from candela.tda.distances import wasserstein_distance_matrix
+
+    N = len(diagrams)
+    n_strata = max(2, min(n_strata, N // 2))
+    boundaries = np.linspace(0, N, n_strata + 1, dtype=int)
+    strata = [(int(boundaries[i]), int(boundaries[i + 1])) for i in range(n_strata)]
+
+    D = wasserstein_distance_matrix(diagrams, order=1.0)
+    results = []
+
+    for k in range(len(strata) - 1):
+        a_start, a_end = strata[k]
+        b_start, b_end = strata[k + 1]
+        idx_a = np.arange(a_start, a_end)
+        idx_b = np.arange(b_start, b_end)
+        if len(idx_a) < 2 or len(idx_b) < 2:
+            continue
+        all_idx = np.concatenate([idx_a, idx_b])
+        sub_D = D[np.ix_(all_idx, all_idx)]
+        labels = np.array([0] * len(idx_a) + [1] * len(idx_b))
+        test = permutation_test(sub_D, labels, n_permutations=n_permutations, seed=seed)
+        results.append({
+            "stratum_a": (int(a_start), int(a_end)),
+            "stratum_b": (int(b_start), int(b_end)),
+            "p_value": test["p_value"],
+            "statistic": test["statistic"],
+        })
+
+    return results
+
+
+# ---------------------------------------------------------------------------
+# Sliding window TDA on topological time series (Takens' theorem)
+# ---------------------------------------------------------------------------
+
+def sliding_window_tda(
+    time_series: np.ndarray,
+    window_size: int = 10,
+    step: int = 1,
+    tau: int = 1,
+    embed_dim: int = 2,
+    max_edge_frac: float = 1.0,
+) -> list:
+    """Apply TDA to a scalar time series via sliding window embedding.
+
+    Each window is delay-embedded into R^embed_dim (Takens' theorem) and
+    H₁ persistence is computed. Periodic patterns appear as persistent H₁
+    bars; regime changes appear as jumps in the H₁ entropy.
+
+    Applied to the PE₁ curve of a game, reveals if the player's territorial
+    style oscillates periodically or changes abruptly.
+
+    Parameters
+    ----------
+    time_series : 1-D array (e.g., persistent entropy H₁ per move).
+    window_size : time steps per window.
+    step : step between windows.
+    tau : delay for the embedding.
+    embed_dim : embedding dimension.
+    max_edge_frac : max_edge_length as fraction of the window's value range.
+
+    Returns
+    -------
+    results : list of dicts per window:
+        'start'          – start index in the original series
+        'end'            – end index
+        'h1_entropy'     – PE₁ of the embedded window
+        'n_loops'        – number of H₁ bars
+        'max_persistence' – maximum finite persistence
+    """
+    from candela.tda.complex import vietoris_rips_complex
+    from candela.tda.persistence import compute_persistence, persistent_entropy, filter_infinite
+
+    ts = np.asarray(time_series, dtype=np.float64)
+    results = []
+    min_pts_needed = (embed_dim - 1) * tau + 1
+
+    for start in range(0, len(ts) - window_size - min_pts_needed + 2, step):
+        end = start + window_size
+        if end > len(ts):
+            break
+        window = ts[start:end]
+        n_pts = window_size - (embed_dim - 1) * tau
+        if n_pts < 3:
+            continue
+        pts = np.column_stack([window[i * tau: i * tau + n_pts] for i in range(embed_dim)])
+        rng_val = float(np.ptp(pts))
+        max_e = rng_val * max_edge_frac if rng_val > 0 else 1.0
+        st = vietoris_rips_complex(pts, max_edge_length=max_e, max_dimension=1)
+        dgms = compute_persistence(st)
+        h1 = filter_infinite(dgms.get(1, np.empty((0, 2))))
+        max_p = float(np.max(h1[:, 1] - h1[:, 0])) if h1.size > 0 else 0.0
+        results.append({
+            "start": start, "end": end,
+            "h1_entropy": persistent_entropy(h1),
+            "n_loops": len(h1),
+            "max_persistence": max_p,
+        })
+
+    return results
+
+
 def bonferroni_correction(p_values: Sequence[float]) -> np.ndarray:
     """Bonferroni correction: p_corrected[i] = min(p[i] * m, 1).
 

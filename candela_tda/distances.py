@@ -222,6 +222,116 @@ def landscape_distance_matrix(
 # Persistence to disk
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# Sliced Wasserstein distance (Carrière et al., 2017)
+# ---------------------------------------------------------------------------
+
+def sliced_wasserstein_distance(
+    dgm_a: Diagram,
+    dgm_b: Diagram,
+    n_directions: int = 50,
+    seed: int = 0,
+) -> float:
+    """Approximate Wasserstein distance via random slicing (Carrière et al., 2017).
+
+    Projects both diagrams onto n_directions random lines and averages the
+    1-Wasserstein distance between sorted projections. Runs in O(n log n)
+    per direction vs O(n³) for the exact transport problem.
+
+    Parameters
+    ----------
+    dgm_a, dgm_b : np.ndarray, shape (n, 2)
+    n_directions : int
+    seed : int
+
+    Returns
+    -------
+    dist : float ≥ 0
+    """
+    rng = np.random.default_rng(seed)
+    a = filter_infinite(np.asarray(dgm_a, dtype=np.float64)) if dgm_a.size > 0 else np.empty((0, 2))
+    b = filter_infinite(np.asarray(dgm_b, dtype=np.float64)) if dgm_b.size > 0 else np.empty((0, 2))
+
+    def _with_diag(dgm):
+        if dgm.size == 0:
+            return dgm
+        mid = (dgm[:, 0] + dgm[:, 1]) / 2
+        return np.vstack([dgm, np.column_stack([mid, mid])])
+
+    a_ext, b_ext = _with_diag(a), _with_diag(b)
+    if a_ext.size == 0 and b_ext.size == 0:
+        return 0.0
+    if a_ext.size == 0:
+        mid = (b_ext[:, 0] + b_ext[:, 1]) / 2
+        a_ext = np.column_stack([mid, mid])
+    if b_ext.size == 0:
+        mid = (a_ext[:, 0] + a_ext[:, 1]) / 2
+        b_ext = np.column_stack([mid, mid])
+
+    na, nb = len(a_ext), len(b_ext)
+    if na < nb:
+        mid = (a_ext[:, 0] + a_ext[:, 1]) / 2
+        a_ext = np.vstack([a_ext, np.column_stack([mid, mid])[:nb - na]])
+    elif nb < na:
+        mid = (b_ext[:, 0] + b_ext[:, 1]) / 2
+        b_ext = np.vstack([b_ext, np.column_stack([mid, mid])[:na - nb]])
+
+    total = 0.0
+    for _ in range(n_directions):
+        theta = rng.uniform(0, np.pi)
+        d = np.array([np.cos(theta), np.sin(theta)])
+        total += np.mean(np.abs(np.sort(a_ext @ d) - np.sort(b_ext @ d)))
+    return float(total / n_directions)
+
+
+def sliced_wasserstein_distance_matrix(
+    diagrams: Sequence[Diagram],
+    n_directions: int = 50,
+    seed: int = 0,
+) -> np.ndarray:
+    """N×N sliced Wasserstein distance matrix."""
+    N = len(diagrams)
+    D = np.zeros((N, N), dtype=np.float64)
+    for i in range(N):
+        for j in range(i + 1, N):
+            d = sliced_wasserstein_distance(diagrams[i], diagrams[j], n_directions, seed)
+            D[i, j] = d
+            D[j, i] = d
+    return D
+
+
+# ---------------------------------------------------------------------------
+# Persistence image barycenter (approximate Fréchet mean)
+# ---------------------------------------------------------------------------
+
+def persistence_image_barycenter(
+    diagrams: Sequence[Diagram],
+    sigma: float = 1.0,
+    pixel_size: float = 0.1,
+) -> np.ndarray:
+    """Approximate Fréchet mean of persistence diagrams via persistence images.
+
+    Computes all images with a shared PersistenceImager (same coordinate
+    system for all) and returns their mean. This is the L² Fréchet mean in
+    image space — an approximation to the true Wasserstein–Fréchet mean
+    (Turner et al., 2014). The result is the player's topological fingerprint
+    across multiple moves or multiple games.
+
+    Parameters
+    ----------
+    diagrams : sequence of np.ndarray
+    sigma : float
+    pixel_size : float
+
+    Returns
+    -------
+    barycenter : np.ndarray, shape (H, W)
+    """
+    from candela.tda.persistence import persistence_images_cohort
+    images = persistence_images_cohort(list(diagrams), sigma=sigma, pixel_size=pixel_size)
+    return images.mean(axis=0)
+
+
 def save_distance_matrix(D: np.ndarray, name: str, output_dir: Path = _OUTPUT_DIR) -> Path:
     """Save a distance matrix as a .npy file.
 

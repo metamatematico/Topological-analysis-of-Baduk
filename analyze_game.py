@@ -54,6 +54,7 @@ from candela.tda.persistence import (
     persistent_entropy, betti_curve,
     persistence_images_cohort,
     compute_cohomology, most_persistent_h1_cocycle, cup_product_h1,
+    euler_characteristic_curve, persistence_silhouette,
 )
 from candela.tda.distances import (
     bottleneck_distance_matrix, wasserstein_distance_matrix,
@@ -63,6 +64,7 @@ from candela.tda.stats import (
     permutation_test, bootstrap_betti_bands,
     cluster_agglomerative, cluster_dbscan,
     classify_persistence_images,
+    topological_transitions, time_stratified_test, sliding_window_tda,
 )
 from candela.tda.viz import (
     draw_board_complex, draw_topological_space,
@@ -267,6 +269,214 @@ imgs_b_h1 = persistence_images_cohort(bH1, sigma=1.0, pixel_size=0.5)
 imgs_w_h1 = persistence_images_cohort(wH1, sigma=1.0, pixel_size=0.5)
 cf_b_half = classify_persistence_images(imgs_b_h1, labels_b_half, classifier="svm", n_splits=3, seed=SEED)
 cf_w_half = classify_persistence_images(imgs_w_h1, labels_w_half, classifier="svm", n_splits=3, seed=SEED)
+
+# ── [7b] Nuevos descriptores TDA ─────────────────────────────────────────────
+print("[7b/9] Nuevos descriptores TDA ...")
+
+# Euler characteristic curves for each player
+ecc_b = euler_characteristic_curve(
+    {0: bH0[i] for i in range(Nb) if bH0[i].size > 0} if any(d.size > 0 for d in bH0) else {},
+    scales,
+)
+ecc_w = euler_characteristic_curve(
+    {0: wH0[i] for i in range(Nw) if wH0[i].size > 0} if any(d.size > 0 for d in wH0) else {},
+    scales,
+)
+# Proper per-move ECC (averaged)
+ecc_b_seq = np.array([
+    euler_characteristic_curve(
+        {k: d for k, d in [(0, bH0[i]), (1, bH1[i])] if d.size > 0},
+        scales
+    ) for i in range(Nb)
+])
+ecc_w_seq = np.array([
+    euler_characteristic_curve(
+        {k: d for k, d in [(0, wH0[i]), (1, wH1[i])] if d.size > 0},
+        scales
+    ) for i in range(Nw)
+])
+
+# Silhouette for H1 (territorial loops) — average over player moves
+sil_scales_b, sil_b = persistence_silhouette(
+    np.vstack([d for d in bH1 if d.size > 0]) if any(d.size > 0 for d in bH1) else np.empty((0, 2)),
+    p=1.0, resolution=100, filtration_range=(0.0, MAX_EPS),
+)
+sil_scales_w, sil_w = persistence_silhouette(
+    np.vstack([d for d in wH1 if d.size > 0]) if any(d.size > 0 for d in wH1) else np.empty((0, 2)),
+    p=1.0, resolution=100, filtration_range=(0.0, MAX_EPS),
+)
+
+# Topological transitions on H1 entropy time series
+trans_b = topological_transitions(bH1, order=1.0)
+trans_w = topological_transitions(wH1, order=1.0)
+
+# Time-stratified test (simplified multiparameter persistence)
+strat_b = time_stratified_test(bH1, n_strata=4, n_permutations=N_PERM, seed=SEED)
+strat_w = time_stratified_test(wH1, n_strata=4, n_permutations=N_PERM, seed=SEED)
+
+# Sliding window TDA on PE1 time series
+sw_b = sliding_window_tda(bE1, window_size=min(12, Nb // 3), step=1, tau=1, embed_dim=2)
+sw_w = sliding_window_tda(wE1, window_size=min(12, Nw // 3), step=1, tau=1, embed_dim=2)
+
+# Mapper (optional — requires kmapper)
+try:
+    from candela.tda.mapper import compute_mapper, mapper_node_stats, draw_mapper_graph
+    _HAS_MAPPER = True
+except ImportError:
+    _HAS_MAPPER = False
+    print("   AVISO: kmapper no instalado — pip install kmapper (saltando Mapper)")
+
+# ── Fig nuevos descriptores ───────────────────────────────────────────────────
+dir_nuevos = output_dir / "07_nuevos_descriptores"
+dir_nuevos.mkdir(parents=True, exist_ok=True)
+
+# Fig A: ECC + Silhouette (2x3)
+fig_nd, axes_nd = plt.subplots(2, 3, figsize=(18, 10))
+
+# Row 0: ECC promedio por jugador
+ax = axes_nd[0, 0]
+if ecc_b_seq.shape[0] > 0:
+    mean_ecc_b = ecc_b_seq.mean(axis=0)
+    std_ecc_b  = ecc_b_seq.std(axis=0)
+    ax.plot(scales, mean_ecc_b, color=BEDGE, lw=1.8, label=BLACK_NAME)
+    ax.fill_between(scales, mean_ecc_b - std_ecc_b, mean_ecc_b + std_ecc_b,
+                    color=BEDGE, alpha=0.18)
+if ecc_w_seq.shape[0] > 0:
+    mean_ecc_w = ecc_w_seq.mean(axis=0)
+    std_ecc_w  = ecc_w_seq.std(axis=0)
+    ax.plot(scales, mean_ecc_w, color=WEDGE, lw=1.8, label=WHITE_NAME)
+    ax.fill_between(scales, mean_ecc_w - std_ecc_w, mean_ecc_w + std_ecc_w,
+                    color=WEDGE, alpha=0.18)
+ax.axhline(0, color="gray", lw=0.7, ls="--")
+ax.set_xlabel("ε"); ax.set_ylabel("ECC(ε)")
+ax.set_title("Curva de Euler\nECC(ε) = Σ_k (-1)^k β_k(ε)", fontsize=9)
+ax.legend(fontsize=8)
+
+# Row 0, col 1: ECC over time (heatmap)
+ax = axes_nd[0, 1]
+if ecc_b_seq.shape[0] > 1:
+    im = ax.imshow(ecc_b_seq.T, aspect="auto", origin="lower",
+                   extent=[0, Nb, scales[0], scales[-1]], cmap="RdBu_r")
+    plt.colorbar(im, ax=ax, label="ECC")
+    ax.set_xlabel("Movimiento del jugador"); ax.set_ylabel("ε")
+    ax.set_title(f"ECC(ε, t) — {BLACK_NAME}\n(rojo=positivo, azul=negativo)", fontsize=9)
+
+# Row 0, col 2: ECC over time White
+ax = axes_nd[0, 2]
+if ecc_w_seq.shape[0] > 1:
+    im = ax.imshow(ecc_w_seq.T, aspect="auto", origin="lower",
+                   extent=[0, Nw, scales[0], scales[-1]], cmap="RdBu_r")
+    plt.colorbar(im, ax=ax, label="ECC")
+    ax.set_xlabel("Movimiento del jugador"); ax.set_ylabel("ε")
+    ax.set_title(f"ECC(ε, t) — {WHITE_NAME}", fontsize=9)
+
+# Row 1, col 0: Silhouette comparison
+ax = axes_nd[1, 0]
+ax.plot(sil_scales_b, sil_b, color=BEDGE, lw=1.8, label=f"{BLACK_NAME} H₁")
+ax.plot(sil_scales_w, sil_w, color=WEDGE, lw=1.8, label=f"{WHITE_NAME} H₁")
+ax.fill_between(sil_scales_b, sil_b, alpha=0.15, color=BEDGE)
+ax.fill_between(sil_scales_w, sil_w, alpha=0.15, color=WEDGE)
+ax.set_xlabel("t"); ax.set_ylabel("sil(t)")
+ax.set_title("Silhouette de persistencia H₁\n(media ponderada de funciones tent)", fontsize=9)
+ax.legend(fontsize=8)
+
+# Row 1, col 1: Transitions on H1 entropy
+ax = axes_nd[1, 1]
+ax.plot(bE1, color=BEDGE, lw=1.2, alpha=0.8, label=BLACK_NAME)
+if trans_b["transitions"]:
+    ax.vlines(trans_b["transitions"], bE1.min(), bE1.max(),
+              colors="#d73027", lw=1.5, ls="--", label="Transición")
+ax.plot(wE1, color=WEDGE, lw=1.2, alpha=0.8, label=WHITE_NAME)
+if trans_w["transitions"]:
+    ax.vlines(trans_w["transitions"], wE1.min(), wE1.max(),
+              colors="#fc8d59", lw=1.5, ls=":", label="Transición (B)")
+ax.set_xlabel("Movimiento del jugador"); ax.set_ylabel("PE₁")
+ax.set_title("Detección de transiciones topológicas\n(cruces de umbral en Wasserstein consecutivo)", fontsize=9)
+ax.legend(fontsize=7)
+
+# Row 1, col 2: Sliding window TDA H1 entropy
+ax = axes_nd[1, 2]
+if sw_b:
+    sw_starts_b = [(r["start"] + r["end"]) / 2 for r in sw_b]
+    sw_ent_b = [r["h1_entropy"] for r in sw_b]
+    ax.plot(sw_starts_b, sw_ent_b, color=BEDGE, lw=1.4, label=f"{BLACK_NAME} (ventana)")
+if sw_w:
+    sw_starts_w = [(r["start"] + r["end"]) / 2 for r in sw_w]
+    sw_ent_w = [r["h1_entropy"] for r in sw_w]
+    ax.plot(sw_starts_w, sw_ent_w, color=WEDGE, lw=1.4, label=f"{WHITE_NAME} (ventana)")
+ax.set_xlabel("Posición central de la ventana"); ax.set_ylabel("PE₁ de ventana embebida")
+ax.set_title("TDA de ventana deslizante sobre PE₁\n(embedding de Takens)", fontsize=9)
+ax.legend(fontsize=8)
+
+plt.suptitle(f"Nuevos descriptores TDA — {TITLE}", fontsize=11)
+plt.tight_layout()
+plt.savefig(dir_nuevos / "01_ecc_silhouette_transiciones.png", dpi=130)
+plt.close()
+
+# Fig B: test estratificado por tiempo
+if strat_b or strat_w:
+    fig_st, axes_st = plt.subplots(1, 2, figsize=(14, 5))
+    for ax, strat_data, name, col in [
+        (axes_st[0], strat_b, BLACK_NAME, BEDGE),
+        (axes_st[1], strat_w, WHITE_NAME, WEDGE),
+    ]:
+        if not strat_data:
+            ax.text(0.5, 0.5, "Sin datos", ha="center", va="center",
+                    transform=ax.transAxes); continue
+        labels_s = [f"E{k+1}→E{k+2}" for k in range(len(strat_data))]
+        pvals = [r["p_value"] for r in strat_data]
+        bars = ax.bar(labels_s, pvals, color=[
+            "#d73027" if p < 0.05 else "#4dac26" for p in pvals
+        ], alpha=0.75, edgecolor="white")
+        ax.axhline(0.05, color="black", lw=1.2, ls="--", label="α=0.05")
+        ax.set_ylabel("p-valor"); ax.set_ylim(0, 1.05)
+        ax.set_title(
+            f"Test estratificado por tiempo — {name}\n"
+            f"(persistencia multiparamétrica simplificada)", fontsize=9
+        )
+        for bar, p in zip(bars, pvals):
+            ax.text(bar.get_x() + bar.get_width() / 2, p + 0.02,
+                    f"{p:.3f}", ha="center", fontsize=8)
+        ax.legend(fontsize=8)
+    plt.suptitle(f"Diferencias topológicas entre fases del juego — {TITLE}", fontsize=10)
+    plt.tight_layout()
+    plt.savefig(dir_nuevos / "02_test_estratificado.png", dpi=130)
+    plt.close()
+
+# Fig C: Mapper (if available)
+if _HAS_MAPPER:
+    try:
+        fig_mp, axes_mp = plt.subplots(1, 2, figsize=(14, 6))
+        for ax, fvecs, h1_dgms, name, n_mv, cmap_m in [
+            (axes_mp[0], b_fvecs, bH1, BLACK_NAME, Nb, "Blues"),
+            (axes_mp[1], w_fvecs, wH1, WHITE_NAME, Nw, "Oranges"),
+        ]:
+            res_m = compute_mapper(
+                fvecs, lens=None, n_cubes=8, overlap=0.4,
+                eps=float(np.percentile(
+                    [np.linalg.norm(fvecs[i] - fvecs[j])
+                     for i in range(0, min(n_mv, 30), 3)
+                     for j in range(i+1, min(n_mv, 30), 3)],
+                    30
+                )) if n_mv > 5 else 1.0,
+                min_samples=2,
+            )
+            ns = mapper_node_stats(res_m["graph"], fvecs,
+                                   move_times=np.arange(n_mv, dtype=float))
+            draw_mapper_graph(res_m["graph"], ns, ax, cmap=cmap_m,
+                              title=f"Mapper — {name}\n(vectores Candela 361D → PCA2 → cobertura)")
+        plt.suptitle(
+            f"Grafo Mapper del espacio de patrones — {TITLE}\n"
+            f"(cada nodo = grupo de movimientos similares; arista = solapamiento)",
+            fontsize=10,
+        )
+        plt.tight_layout()
+        plt.savefig(dir_nuevos / "03_mapper.png", dpi=130)
+        plt.close()
+    except Exception as _e_mapper:
+        print(f"   Mapper omitido: {_e_mapper}")
+
+print("   Nuevos descriptores calculados.")
 
 # ── FIGURES ───────────────────────────────────────────────────────────────────
 print("[8/9] Generando figuras ...")
