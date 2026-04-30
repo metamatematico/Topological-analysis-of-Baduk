@@ -3,6 +3,8 @@
 > **¿Qué tan diferente es el juego de dos jugadores de Go, matemáticamente?**
 > Este proyecto responde esa pregunta combinando dos herramientas independientes: **Candela** (reconocimiento de patrones) y el **complejo de Vietoris-Rips** (topología algebraica). Cada una opera de forma completamente independiente sobre el mismo archivo SGF.
 
+**Paper:** Jiménez Martínez, L. & Sesma González, Á. A. (2026). *Un análisis topológico del Baduk: Homología persistente y reconocimiento canónico de patrones aplicados al juego de Go.* → [docs/Analisis_Topologico_del_Baduk.pdf](docs/Analisis_Topologico_del_Baduk.pdf)
+
 ---
 
 # PARTE I — Candela
@@ -329,3 +331,5 @@ pip install -r requirements.txt
 **Centro de investigación:** BIOMAT Centro de Biomatemáticas
 
 La capa TDA (`candela_tda/`) fue construida sobre Candela por [@metamatematico](https://github.com/metamatematico) usando [GUDHI](https://gudhi.inria.fr/), [persim](https://persim.scikit-tda.org/) y Fasy et al. (2014) para las bandas de confianza bootstrap.
+
+> Jiménez Martínez, L. & Sesma González, Á. A. (2026). Un análisis topológico del Baduk: Homología persistente y reconocimiento canónico de patrones aplicados al juego de Go. [docs/Analisis_Topologico_del_Baduk.pdf](docs/Analisis_Topologico_del_Baduk.pdf)
