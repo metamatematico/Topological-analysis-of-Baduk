@@ -418,9 +418,12 @@ plt.tight_layout()
 plt.savefig(dir_nuevos / "01_ecc_silhouette_transiciones.png", dpi=130)
 plt.close()
 
-# Fig B: test estratificado por tiempo
+# Fig B: test estratificado por tiempo  (-log10 p-value axis)
 if strat_b or strat_w:
     fig_st, axes_st = plt.subplots(1, 2, figsize=(14, 5))
+    _ALPHA = 0.05
+    _THRESHOLD = -np.log10(_ALPHA)          # ≈ 1.30
+    _MIN_P = 1.0 / (N_PERM + 1)            # minimum detectable p-value
     for ax, strat_data, name, col in [
         (axes_st[0], strat_b, BLACK_NAME, BEDGE),
         (axes_st[1], strat_w, WHITE_NAME, WEDGE),
@@ -430,20 +433,35 @@ if strat_b or strat_w:
                     transform=ax.transAxes); continue
         labels_s = [f"E{k+1}→E{k+2}" for k in range(len(strat_data))]
         pvals = [r["p_value"] for r in strat_data]
-        bars = ax.bar(labels_s, pvals, color=[
-            "#d73027" if p < 0.05 else "#4dac26" for p in pvals
-        ], alpha=0.75, edgecolor="white")
-        ax.axhline(0.05, color="black", lw=1.2, ls="--", label="α=0.05")
-        ax.set_ylabel("p-valor"); ax.set_ylim(0, 1.05)
+        # Clamp to minimum detectable to avoid log(0)
+        log_pvals = [-np.log10(max(p, _MIN_P)) for p in pvals]
+        bar_colors = ["#d73027" if p < _ALPHA else "#4dac26" for p in pvals]
+        bars = ax.bar(labels_s, log_pvals, color=bar_colors, alpha=0.82,
+                      edgecolor="white", linewidth=1.2)
+        # Threshold line
+        ax.axhline(_THRESHOLD, color="black", lw=1.4, ls="--",
+                   label=f"α={_ALPHA}  (−log₁₀ = {_THRESHOLD:.2f})")
+        ax.set_ylabel("−log₁₀(p-valor)")
+        y_max = max(log_pvals) * 1.25 if log_pvals else 4
+        ax.set_ylim(0, max(y_max, _THRESHOLD * 1.5))
         ax.set_title(
             f"Test estratificado por tiempo — {name}\n"
             f"(persistencia multiparamétrica simplificada)", fontsize=9
         )
-        for bar, p in zip(bars, pvals):
-            ax.text(bar.get_x() + bar.get_width() / 2, p + 0.02,
-                    f"{p:.3f}", ha="center", fontsize=8)
+        # Annotate with actual p-values
+        for bar, p, lp in zip(bars, pvals, log_pvals):
+            label = f"p={p:.3f}" if p > _MIN_P else f"p≤{_MIN_P:.3f}*"
+            ax.text(bar.get_x() + bar.get_width() / 2, lp + 0.05,
+                    label, ha="center", va="bottom", fontsize=8, fontweight="bold")
         ax.legend(fontsize=8)
-    plt.suptitle(f"Diferencias topológicas entre fases del juego — {TITLE}", fontsize=10)
+        ax.annotate(f"* mín. detectable con {N_PERM} permutaciones",
+                    xy=(0.01, 0.97), xycoords="axes fraction",
+                    fontsize=7, color="gray", va="top")
+    plt.suptitle(
+        f"Diferencias topológicas entre fases del juego — {TITLE}\n"
+        f"Rojo = significativo (p < {_ALPHA});  Verde = no significativo",
+        fontsize=10
+    )
     plt.tight_layout()
     plt.savefig(dir_nuevos / "02_test_estratificado.png", dpi=130)
     plt.close()
