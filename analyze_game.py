@@ -37,13 +37,16 @@ from pathlib import Path
 from itertools import combinations
 
 warnings.filterwarnings("ignore")
-sys.path.insert(0, str(Path(__file__).parent))
+_here = Path(__file__).parent
+_candela_root = _here.parent / "candela"
+sys.path.insert(0, str(_candela_root))
+sys.path.insert(0, str(_here))
 
 from sgfmill import sgf, boards as sgf_boards
 import importlib.util
 
 # Candela root
-spec = importlib.util.spec_from_file_location("_croot", Path(__file__).parent / "candela.py")
+spec = importlib.util.spec_from_file_location("_croot", _candela_root / "candela.py")
 _croot = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(_croot)
 
@@ -128,6 +131,8 @@ for prop in ["PW", "PB", "RE", "DT", "KM", "EV", "PC", "GN"]:
 
 BLACK_NAME = meta.get("PB", "Negro")
 WHITE_NAME = meta.get("PW", "Blanco")
+BEDGE, WEDGE = "#4393c3", "#d6604d"     # complex edge colors (defined early for [7b/9])
+TITLE = f"{BLACK_NAME} vs {WHITE_NAME} | {meta.get('DT','?')} | {meta.get('RE','?')}"
 
 # Replay board; record per-move data and actual board state at each move.
 # We query the sgfmill Board object after each play so captures are reflected:
@@ -480,9 +485,7 @@ print("   Nuevos descriptores calculados.")
 
 # ── FIGURES ───────────────────────────────────────────────────────────────────
 print("[8/9] Generando figuras ...")
-TITLE = f"{BLACK_NAME} vs {WHITE_NAME} | {meta.get('DT','?')} | {meta.get('RE','?')}"
 BCOL, WCOL = "#1a1a1a", "#d4a017"       # board stone colors
-BEDGE, WEDGE = "#4393c3", "#d6604d"     # complex edge colors
 BFACE, WFACE = "#92c5de", "#f4a582"     # complex face colors
 
 # ── Fig 01: Entropy per player over their own moves ──────────────────────────

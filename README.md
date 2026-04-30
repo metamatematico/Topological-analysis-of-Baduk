@@ -142,7 +142,9 @@ Archivo SGF
 ## Oguchi vs tiernuki — estilos topológicamente convergentes
 
 **OGS · 2026-02-20 · 283 movimientos · B+4.5**
-Resultados completos: [`ejemplo_oguchi_vs_tiernuki/`](ejemplo_oguchi_vs_tiernuki/)
+
+> 📄 **Análisis completo con interpretación matemática y para jugadores de Go:**  
+> [`ejemplo_oguchi_vs_tiernuki/INTERPRETACION.md`](ejemplo_oguchi_vs_tiernuki/INTERPRETACION.md)
 
 El test de permutación entre los estilos de Negro y Blanco arroja **p = 0.908** — sus distribuciones topológicas son casi indistinguibles.
 
@@ -150,44 +152,58 @@ El test de permutación entre los estilos de Negro y Blanco arroja **p = 0.908**
 |---|---|---|
 | H₀ entropía media | 3.998 | 3.972 |
 | H₁ entropía media | 2.978 | 2.954 |
+| H₁ persistencia máxima | 1.16 (frágil) | **3.00 (sólido)** |
+| SVM apertura vs final (H₁) | **97.2% accuracy** | **96.5% accuracy** |
 
 #### Complejos simpliciales en 5 momentos del partido
 
 | Negro (Oguchi) | Blanco (tiernuki) |
 |:-:|:-:|
-| ![complejo negro](ejemplo_oguchi_vs_tiernuki/figuras/fig03_complex_negro_moments.png) | ![complejo blanco](ejemplo_oguchi_vs_tiernuki/figuras/fig04_complex_blanco_moments.png) |
+| ![complejo negro](ejemplo_oguchi_vs_tiernuki/01_complejo_vr/01_negro_momentos.png) | ![complejo blanco](ejemplo_oguchi_vs_tiernuki/01_complejo_vr/02_blanco_momentos.png) |
 
-#### Filtración de Vietoris-Rips (a cuatro escalas ε)
+#### Filtración de Vietoris-Rips (ε progresivo)
 
 | Negro | Blanco |
 |:-:|:-:|
-| ![epsilon negro](ejemplo_oguchi_vs_tiernuki/figuras/fig05_complex_negro_epsilons.png) | ![epsilon blanco](ejemplo_oguchi_vs_tiernuki/figuras/fig06_complex_blanco_epsilons.png) |
+| ![epsilon negro](ejemplo_oguchi_vs_tiernuki/01_complejo_vr/03_negro_filtracion_epsilon.png) | ![epsilon blanco](ejemplo_oguchi_vs_tiernuki/01_complejo_vr/04_blanco_filtracion_epsilon.png) |
 
-#### Espacio topológico MDS (Candela)
+#### Evolución de la entropía persistente
 
-![espacio topológico](ejemplo_oguchi_vs_tiernuki/figuras/fig07_topo_space_negro.png)
-
-#### Evolución de la entropía
-
-![entropía](ejemplo_oguchi_vs_tiernuki/figuras/fig01_entropy_per_player.png)
+![entropía](ejemplo_oguchi_vs_tiernuki/02_homologia_persistente/01_entropia.png)
 
 #### Curvas de Betti comparadas
 
-![comparación betti](ejemplo_oguchi_vs_tiernuki/figuras/fig09_comparison_betti.png)
+![comparación betti](ejemplo_oguchi_vs_tiernuki/02_homologia_persistente/03_comparacion_betti.png)
 
 Las curvas de Betti de ambos jugadores se solapan casi perfectamente — confirmación visual de la convergencia topológica.
+
+#### Cohomología: ¿quién tiene el territorio más sólido?
+
+| Negro (Oguchi) | Blanco (tiernuki) |
+|:-:|:-:|
+| ![coho negro](ejemplo_oguchi_vs_tiernuki/03_cohomologia/01_dualidad_homologia_cohomologia.png) | |
+
+tiernuki construyó el lazo H₁ más persistente (3.00 vs 1.16 de Oguchi) — coherente con su victoria por B+4.5.
+
+#### Espacio topológico del jugador (UMAP + MDS)
+
+![espacio topológico](ejemplo_oguchi_vs_tiernuki/04_espacio_topologico/03_umap_vs_mds.png)
+
+#### Nuevos descriptores: ECC, Silhouette, transiciones
+
+![nuevos descriptores](ejemplo_oguchi_vs_tiernuki/07_nuevos_descriptores/01_ecc_silhouette_transiciones.png)
 
 #### Resultados estadísticos
 
 | Pregunta | p-valor | Conclusión |
 |---|---|---|
 | ¿Son topológicamente distintos Oguchi y tiernuki? | **0.908** | No — estilos casi idénticos |
-| ¿Cambia el estilo de Oguchi entre apertura y final? | 0.001 | Sí — muy significativo |
-| ¿Cambia el estilo de tiernuki entre apertura y final? | 0.001 | Sí — muy significativo |
+| ¿Cambia el estilo de Oguchi entre apertura y final? | **0.001** | Sí — muy significativo |
+| ¿Cambia el estilo de tiernuki entre apertura y final? | **0.001** | Sí — muy significativo |
 | SVM apertura vs final — Oguchi (H₁) | — | **97.2% accuracy** |
 | SVM apertura vs final — tiernuki (H₁) | — | **96.5% accuracy** |
 
-Ver el [reporte completo](ejemplo_oguchi_vs_tiernuki/reporte_oguchi_vs_tiernuki.md).
+Ver el [reporte generado automáticamente](ejemplo_oguchi_vs_tiernuki/reporte_oguchi_vs_tiernuki.md) o la [interpretación exhaustiva](ejemplo_oguchi_vs_tiernuki/INTERPRETACION.md).
 
 ---
 
@@ -283,16 +299,24 @@ python analyze_game.py ruta/a/partida.sgf ruta/salida/
 
 ```
 outputs/mi_partida/
-├── report.md
-├── figures/
-│   ├── fig01_entropy_per_player.png       # Entropía H₀/H₁ (VR)
-│   ├── fig03_complex_negro_moments.png    # Complejo VR por momentos
-│   ├── fig05_complex_negro_epsilons.png   # Filtración VR
-│   ├── fig07_topo_space_negro.png         # Espacio MDS (Candela)
-│   ├── fig09_comparison_betti.png         # Curvas de Betti (VR)
-│   └── ...
-└── distances/
-    └── *.npy
+├── report.md                              # Reporte automático con interpretaciones
+├── analysis.json                          # Metadatos y parámetros
+├── 01_complejo_vr/                        # Complejos VR en 5 momentos + filtración + dim/birth
+├── 02_homologia_persistente/              # Entropía, Betti, bootstrap, diagramas
+├── 03_cohomologia/                        # Dualidad H/CoH, cociclos, cup product
+├── 04_espacio_topologico/                 # MDS, UMAP, VR sobre el espacio, 3D
+├── 05_estadistica/                        # Matrices de distancias, tests, heatmaps
+├── 06_video/
+│   └── evolucion_vr.mp4                  # Video de evolución del complejo (1 frame/movimiento)
+├── 07_nuevos_descriptores/               # ECC, silhouette, transiciones, test estratificado
+└── distancias/
+    └── *.npy                             # Matrices de distancias (bottleneck, Euclidiana)
+```
+
+Instalar `kmapper` para el grafo Mapper (opcional):
+
+```bash
+pip install kmapper
 ```
 
 ---
