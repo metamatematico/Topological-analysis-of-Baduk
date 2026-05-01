@@ -399,18 +399,25 @@ ax.set_xlabel("Movimiento del jugador"); ax.set_ylabel("PE₁")
 ax.set_title("Detección de transiciones topológicas\n(cruces de umbral en Wasserstein consecutivo)", fontsize=9)
 ax.legend(fontsize=7)
 
-# Row 1, col 2: Sliding window TDA H1 entropy
+# Row 1, col 2: Rolling mean ± std of PE₁
+# (Takens embedding of PE₁ gives trivial H₁≈0 because PE₁ is monotonic in Go;
+#  rolling statistics on PE₁ directly are far more informative)
 ax = axes_nd[1, 2]
-if sw_b:
-    sw_starts_b = [(r["start"] + r["end"]) / 2 for r in sw_b]
-    sw_ent_b = [r["h1_entropy"] for r in sw_b]
-    ax.plot(sw_starts_b, sw_ent_b, color=BEDGE, lw=1.4, label=f"{BLACK_NAME} (ventana)")
-if sw_w:
-    sw_starts_w = [(r["start"] + r["end"]) / 2 for r in sw_w]
-    sw_ent_w = [r["h1_entropy"] for r in sw_w]
-    ax.plot(sw_starts_w, sw_ent_w, color=WEDGE, lw=1.4, label=f"{WHITE_NAME} (ventana)")
-ax.set_xlabel("Posición central de la ventana"); ax.set_ylabel("PE₁ de ventana embebida")
-ax.set_title("TDA de ventana deslizante sobre PE₁\n(embedding de Takens)", fontsize=9)
+_W_b = max(5, min(15, Nb // 8))
+_W_w = max(5, min(15, Nw // 8))
+for _e1, _W, _col, _name in [(bE1, _W_b, BEDGE, BLACK_NAME),
+                               (wE1, _W_w, WEDGE, WHITE_NAME)]:
+    if len(_e1) >= _W:
+        _kernel = np.ones(_W) / _W
+        _mean = np.convolve(_e1, _kernel, mode='valid')
+        _std  = np.array([_e1[i:i+_W].std() for i in range(len(_e1) - _W + 1)])
+        _x    = np.arange(_W // 2, _W // 2 + len(_mean))
+        ax.plot(_x, _mean, color=_col, lw=1.8, label=_name)
+        ax.fill_between(_x, _mean - _std, _mean + _std, color=_col, alpha=0.18)
+ax.set_xlabel("Movimiento del jugador")
+ax.set_ylabel(f"PE₁ (media ± σ)")
+ax.set_title(f"Media deslizante de entropía persistente H₁\n"
+             f"(ventana N/8 movimientos — banda = volatilidad local)", fontsize=9)
 ax.legend(fontsize=8)
 
 plt.suptitle(f"Nuevos descriptores TDA — {TITLE}", fontsize=11)
